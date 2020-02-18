@@ -10,7 +10,6 @@ def is_asset_pair(tx, asset):
 
 PRICE_CONSTANT = 100000000
 ALIASES = []
-DECIMALS = 8
 
 
 def is_alias(alias):
@@ -34,10 +33,10 @@ def balance_change(tx, address, asset, sponsor):
             amount -= tx['amount']
         if tx['recipient'] == address or is_alias(tx['recipient']):
             amount += tx['amount']
-    elif tx['type'] == 5 and tx['amount'] == asset:
+    elif tx['type'] == 5 and tx['assetId'] == asset:
         amount = tx['quantity']
-    elif tx['type'] == 6 and tx['amount'] == asset:
-        amount = -tx['quantity']
+    elif tx['type'] == 6 and tx['assetId'] == asset:
+        amount = -tx['amount']
     elif tx['type'] == 7 and is_asset_pair(tx, asset):
         if tx['order1']['sender'] == address:
             order = tx['order1']
@@ -127,16 +126,15 @@ def balance_change(tx, address, asset, sponsor):
         sponsor
 
 
-def arrange(n):
-    return n / pow(10, DECIMALS)
+def arrange(n, decimals):
+    return n / pow(10, decimals)
 
 
 def total_balance(txs):
     balance = 0
     for ts, height, tx_id, direction, amount, fee, tx_type, total, sponsor in txs:
         balance += total
-        yield height, tx_id, tx_type, arrange(amount), arrange(fee), direction, arrange(total), arrange(
-            balance), sponsor
+        yield height, tx_id, tx_type, amount, fee, direction, total, balance, sponsor
 
 
 def load_all_transactions(node, address):
@@ -172,16 +170,26 @@ def has_asset(tx, asset):
            or tx['type'] == 16 and transfer_asset(tx['stateChanges']['transfers'], asset)
 
 
+def asset_info(node, asset):
+    response = requests.get(f'{node}/assets/details/{asset}').json()
+    if response:
+        if 'decimals' in response and 'quantity' in response and 'name' in response:
+            return response['name'], response['quantity'], response['decimals']
+
+
 def calculate_balance_changes():
     node = sys.argv[1]
     address = sys.argv[2]
     asset = sys.argv[3]
+    info = asset_info(node, asset)
+    decimals = info[2]
     transactions = load_all_transactions(node, address)
     if transactions:
         balance_changes = []
         sponsor = False
         for t in sorted(transactions, key=lambda x: (x['height'], x['timestamp'])):
-            if has_asset(t, asset) or t['type'] == 10:
+            # if has_asset(t, asset) or t['type'] == 10:
+            if True:
                 ch = balance_change(t, address, asset, sponsor)
                 sponsor = ch[8]
                 balance_changes.append(ch)
@@ -195,7 +203,15 @@ def calculate_balance_changes():
 
         count = 0
         for bc in total_balance(balance_changes):
-            print('{:8} {:45} {:2} {:24,.8f} {:24,.8f} {:1} {:24,.8f} {:24,.8f} {:1}'.format(*bc))
+            print('{:8} {:45} {:2} {:24,.8f} {:24,.8f} {:1} {:24,.8f} {:24,.8f} {:1}'.format(bc[0],
+                                                                                             bc[1],
+                                                                                             bc[2],
+                                                                                             arrange(bc[3], decimals),
+                                                                                             arrange(bc[4], decimals),
+                                                                                             bc[5],
+                                                                                             arrange(bc[6], decimals),
+                                                                                             arrange(bc[7], decimals),
+                                                                                             bc[8]))
             count += 1
 
         print("Transactions: ", count)
