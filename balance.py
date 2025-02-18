@@ -7,7 +7,7 @@ import requests
 
 def pubkey_to_address(pubkey):
     pubkey_bytes = base58.b58decode(pubkey)
-    unhashed_address = chr(1) + str('L') + crypto.hashChain(pubkey_bytes)[0:20]
+    unhashed_address = chr(1) + str('S') + crypto.hashChain(pubkey_bytes)[0:20]
     address_hash = crypto.hashChain(crypto.str2bytes(unhashed_address))[0:4]
     return base58.b58encode(crypto.str2bytes(unhashed_address + address_hash))
 
@@ -104,8 +104,8 @@ def calculate_balance_changes():
     address = sys.argv[1]
     transactions = load_all_transactions(address)
     if transactions:
-        balance_chages = [balance_change(t, address) for t in sorted(transactions, key=lambda x: x['height'])]
-        for bc in total_balance(balance_chages):
+        balance_changes = [balance_change(t, address) for t in sorted(transactions, key=lambda x: x['height'])]
+        for bc in total_balance(balance_changes):
             print('{:6} {:45} {:2} {:10d} {} {:12d} {:12d} {:12d} {:12d}'.format(*bc))
     else:
         print(transactions)

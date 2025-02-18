@@ -84,6 +84,7 @@ def balance_change(tx, address, asset, sponsor):
                 if t['recipient'] == address or is_alias(t['recipient']):
                     amount += t['amount']
                     total += t['amount']
+        total = amount
     elif tx['type'] == 14 and tx['assetId'] == asset:
         sponsor = True
     elif tx['type'] == 16:
@@ -97,7 +98,7 @@ def balance_change(tx, address, asset, sponsor):
                 amount += p['amount']
             if tx['dApp'] == address and p['asset'] == asset:
                 amount -= p['amount']
-
+        total = amount
     if sponsor:
         if 'sender' in tx and tx['sender'] == address:
             fee = 0
